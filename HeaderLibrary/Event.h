@@ -3,7 +3,7 @@
 #include <vector>
 #include <stdexcept>
 #include <iostream>
-#include "EventObserver.h";
+#include "EventObserver.h"
 // #include "PrintUtils.h" // For debugging
 
 /* General Helper Functions for Event */
@@ -72,7 +72,7 @@ protected:
 	// Variables
 	std::vector<int> n_max_vals;  // Max number of events of each type
 	std::vector<int> n_curr_vals; // Current number of events of each type found
-	int n_event_types;			  // Number of event types to look for (size of n_max_vals, n_curr_vals)
+	size_t n_event_types;			  // Number of event types to look for (size of n_max_vals, n_curr_vals)
 	double t_tol;				  // Time tolerance for event finding
 
 	// Constructor
