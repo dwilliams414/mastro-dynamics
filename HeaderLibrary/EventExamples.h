@@ -16,7 +16,7 @@ public:
 	}
 
 	// Terminate Function
-	std::vector<int> terminate_fcn() override
+	std::vector<int> terminate_fcn(double t) override
 	{
 		std::vector<int> terminate = { 0 };
 		if (n_curr_vals[0] >= n_max_vals[0])
