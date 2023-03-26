@@ -56,7 +56,7 @@ size_t integrate_adaptive_event_loop(
         obs(state_post_step, time_post_step);
         if (less_with_sign(end_time, static_cast<Time>(time_post_step + dt), dt))
         {
-            dt = end_time - start_time;
+            dt = end_time - time_post_step;
         }
 
         state_pre_step = state_post_step;
