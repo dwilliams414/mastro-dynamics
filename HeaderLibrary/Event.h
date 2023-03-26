@@ -51,7 +51,7 @@ public:
 	virtual std::vector<double> event_fcn(const double t, const state_type& state) = 0;
 
 	// Virtual termination specification function. Must return vector of length n_event_types
-	virtual std::vector<int> terminate_fcn() = 0;
+	virtual std::vector<int> terminate_fcn(double t) = 0;
 
 	// Virtual direction specification function.  Must return vector of length n_event_types
 	// Implementation is similar to MATLAB: -1 for decrease, 0 for either, +1 increase
@@ -116,7 +116,7 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 	vector<int> sgn_pre = vsgn(event_fcn(t_pre, prev_state));
 	vector<int> sgn_post = vsgn(event_fcn(t_post, curr_state));
 	vector<int> direction = direction_fcn();
-	vector<int> isterminal = terminate_fcn(); // For sizing.  Update again later after anything incremented
+	vector<int> isterminal = terminate_fcn(t_pre); // For sizing.  Update again later after anything incremented
 
 	// Ensure that Event Function is Valid
 	check_sizing(sgn_pre, direction, isterminal);
@@ -156,8 +156,6 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 		//print_pair_vec(time_and_index); // For debugging
 	}
 
-	isterminal = terminate_fcn(); // Recheck terminate_fcn() with updated n_curr_events
-
 	// Iterate Through Time + Event Pair and Step to Event Time
 	// Break from loop if a terminal event is found
 	for (int i = 0; i < time_and_index.size(); i++)
@@ -174,6 +172,8 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 			eo.xe.push_back(xe_step);
 
 			// Check if Event is Terminal
+			isterminal = terminate_fcn(t_step); // Recheck terminate_fcn() with updated n_curr_events and time
+
 			if (isterminal[time_and_index[i].second])
 			{
 				terminate = true;
