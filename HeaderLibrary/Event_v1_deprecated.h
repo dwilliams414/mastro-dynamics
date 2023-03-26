@@ -73,12 +73,14 @@ protected:
 	std::vector<int> n_max_vals;  // Max number of events of each type
 	std::vector<int> n_curr_vals; // Current number of events of each type found
 	size_t n_event_types;			  // Number of event types to look for (size of n_max_vals, n_curr_vals)
+	double t_tol;				  // Time tolerance for event finding
 
 	// Constructor
-	Event(std::vector<int> n_max_vals)
+	Event(std::vector<int> n_max_vals, double t_tolerance = std::numeric_limits<double>::epsilon())
 	{
 		this->n_max_vals = n_max_vals;
 		this->n_event_types = n_max_vals.size();
+		t_tol = t_tolerance;
 
 		for (int i = 0; i < this->n_event_types; i++)
 		{
@@ -231,13 +233,13 @@ double Event::bisection_fcn(ControlledStepper stepper, System& sys, const state_
 	double t_a = t_pre; // Left Bracketing Time
 	double t_b = t_post; // Right Bracketing Time
 	double t_m = t_pre + (t_post - t_pre) / 2.0; // Midpoint time
+	double error = abs(t_post - t_pre) / 2.0; // Error
 
 	state_type a_state = prev_state; // Left Bracketing State
 	state_type b_state = curr_state; // Right Bracketing State
 
-	// Iterate Bisection.  Goes to machine precision for size of t_a and t_b
-	// This means accuracy technically decreases as t_a and t_b become larger
-	while ((t_a < (t_b+t_a)/2.0) && ((t_b+t_a)/2.0 < t_b))
+	// Iterate Bisection
+	while (error > t_tol)
 	{
 		state_type m_state = a_state; // Initial state is at a
 		double tm_start = t_a; // Initial time is at a
@@ -268,6 +270,7 @@ double Event::bisection_fcn(ControlledStepper stepper, System& sys, const state_
 			}
 
 			t_m = t_a + (t_b - t_a) / 2.0; // Update t_m
+			error = abs(t_b - t_a) / 2.0; // Update error
 			t_event = t_m; // Save t_m in t_event (value to return)
 		}
 		else
