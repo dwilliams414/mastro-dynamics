@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <iostream>
 #include "EventObserver.h"
-#include <boost/numeric/odeint.hpp>
 // #include "PrintUtils.h" // For debugging
 
 /* General Helper Functions for Event */
@@ -161,29 +160,31 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 	// Break from loop if a terminal event is found
 	for (int i = 0; i < time_and_index.size(); i++)
 	{
-		// Specify Integration Params
-		double t_event = time_and_index[i].first;
 		double dt_event = time_and_index[i].first - t_pre;
+		double t_step = t_pre;
 		state_type xe_step = prev_state;
 
-		// Step to event location
-		boost::numeric::odeint::integrate_adaptive(stepper, sys, xe_step, t_pre, t_event, dt_event);
-
-		// Save Event Results
-		eo.ie.push_back(time_and_index[i].second + 1); // Add 1 for consistency with MATLAB event numbering
-		eo.te.push_back(t_event);
-		eo.xe.push_back(xe_step);
-
-		// Check if Event is Terminal
-		isterminal = terminate_fcn(t_event, xe_step); // Recheck terminate_fcn() with updated n_curr_events and time
-
-		// If event is terminal, break and save results into the regular t and x vectors
-		if (isterminal[time_and_index[i].second])
+		int res = stepper.try_step(sys, xe_step, t_step, dt_event);
+		if (res == boost::numeric::odeint::success)
 		{
-			terminate = true;
-			eo.t.push_back(t_event); // Becomes final time in regular integration results
-			eo.x.push_back(xe_step); // Becomes final state in regular integration results
-			break;
+			eo.ie.push_back(time_and_index[i].second + 1); // Add 1 for consistency with MATLAB event numbering
+			eo.te.push_back(t_step);
+			eo.xe.push_back(xe_step);
+
+			// Check if Event is Terminal
+			isterminal = terminate_fcn(t_step, xe_step); // Recheck terminate_fcn() with updated n_curr_events and time
+
+			if (isterminal[time_and_index[i].second])
+			{
+				terminate = true;
+				eo.t.push_back(t_step); // Becomes final time in regular integration results
+				eo.x.push_back(xe_step); // Becomes final state in regular integration results
+				break;
+			}
+		}
+		else
+		{
+			throw std::runtime_error("Something went wrong when re-checking events...terminating");
 		}
 	}
 
@@ -239,35 +240,40 @@ double Event::bisection_fcn(ControlledStepper stepper, System& sys, const state_
 	while ((t_a < (t_b+t_a)/2.0) && ((t_b+t_a)/2.0 < t_b))
 	{
 		state_type m_state = a_state; // Initial state is at a
-		double dt_i = t_m - t_a; // Step for this bisection
+		double tm_start = t_a; // Initial time is at a
+		double dt_i = t_m - tm_start; // Step for this bisection
 
-		// Step from t_a -> t_m
-		boost::numeric::odeint::integrate_adaptive(stepper, sys, m_state, t_a, t_m, dt_i);
-
-		// Compute Signs
-		vector<int> sgn_a = vsgn(event_fcn(t_a, a_state));
-		vector<int> sgn_b = vsgn(event_fcn(t_b, b_state));
-		vector<int> sgn_m = vsgn(event_fcn(t_m, m_state));
-
-		// Changing Bounds (std. Bisection Method)
-		if (sgn_a[ie] * sgn_m[ie] < 0)
+		int res = stepper.try_step(sys, m_state, tm_start, dt_i); // Step to find m_state
+		if (res == boost::numeric::odeint::success)
 		{
-			t_b = t_m;
-			b_state = m_state;
-		}
-		else if (sgn_a[ie] == 0)
-		{
-			t_event = t_a;
-			break;
+			vector<int> sgn_a = vsgn(event_fcn(t_a, a_state));
+			vector<int> sgn_b = vsgn(event_fcn(t_b, b_state));
+			vector<int> sgn_m = vsgn(event_fcn(t_m, m_state));
+
+			// Changing Bounds (std. Bisection Method)
+			if (sgn_a[ie] * sgn_m[ie] < 0)
+			{
+				t_b = t_m;
+				b_state = m_state;
+			}
+			else if (sgn_a[ie] == 0)
+			{
+				t_event = t_a;
+				break;
+			}
+			else
+			{
+				t_a = t_m;
+				a_state = m_state;
+			}
+
+			t_m = t_a + (t_b - t_a) / 2.0; // Update t_m
+			t_event = t_m; // Save t_m in t_event (value to return)
 		}
 		else
 		{
-			t_a = t_m;
-			a_state = m_state; // So that we now integrate from new a_state
+			throw std::runtime_error("Something went wrong with your bisection!!");
 		}
-
-		t_m = t_a + (t_b - t_a) / 2.0; // Update t_m
-		t_event = t_m; // Save t_m in t_event (value to return)
 	}
 	return t_event;
 
