@@ -32,7 +32,7 @@ template <typename Numeric> std::vector<int> vsgn(const std::vector<Numeric>& v)
 * 
 * Subclasses of Event can set n_max_vals and then use this value in defining their overwrite of event_fcn or terminate_fcn.
 * n_max_vals must always be specified as a vector of integers in the constructor of a subclass of event.  However, this variable is not used
-* UNLESS the terminate_fcn() in the subclass uses it to define termination conditions.
+* UNLESS the terminate_fcn in the subclass uses it to define termination conditions.
 * 
 * Event uses a bisection algorithm to locate events between integration steps.  The bisection tolerance is defined by time.  By default,
 * the tolerance is set to machine precision.  HOWEVER, this can be overwridden by specifying t_tol in the superclass constructor call of 
@@ -51,7 +51,7 @@ public:
 	virtual std::vector<double> event_fcn(const double t, const state_type& state) = 0;
 
 	// Virtual termination specification function. Must return vector of length n_event_types
-	virtual std::vector<int> terminate_fcn(double t) = 0;
+	virtual std::vector<int> terminate_fcn(const double t, const state_type& state) = 0;
 
 	// Virtual direction specification function.  Must return vector of length n_event_types
 	// Implementation is similar to MATLAB: -1 for decrease, 0 for either, +1 increase
@@ -116,7 +116,7 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 	vector<int> sgn_pre = vsgn(event_fcn(t_pre, prev_state));
 	vector<int> sgn_post = vsgn(event_fcn(t_post, curr_state));
 	vector<int> direction = direction_fcn();
-	vector<int> isterminal = terminate_fcn(t_pre); // For sizing.  Update again later after anything incremented
+	vector<int> isterminal = terminate_fcn(t_pre, prev_state); // For sizing.  Update again later after anything incremented
 
 	// Ensure that Event Function is Valid
 	check_sizing(sgn_pre, direction, isterminal);
@@ -172,7 +172,7 @@ int Event::check_event_step(ControlledStepper stepper, const System& sys, const 
 			eo.xe.push_back(xe_step);
 
 			// Check if Event is Terminal
-			isterminal = terminate_fcn(t_step); // Recheck terminate_fcn() with updated n_curr_events and time
+			isterminal = terminate_fcn(t_step, xe_step); // Recheck terminate_fcn() with updated n_curr_events and time
 
 			if (isterminal[time_and_index[i].second])
 			{
