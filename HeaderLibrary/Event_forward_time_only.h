@@ -230,16 +230,13 @@ double Event::bisection_fcn(ControlledStepper stepper, System& sys, const state_
 	double t_a = t_pre; // Left Bracketing Time
 	double t_b = t_post; // Right Bracketing Time
 	double t_m = t_pre + (t_post - t_pre) / 2.0; // Midpoint time
-	double dt_interval = t_b - t_a;
 
 	state_type a_state = prev_state; // Left Bracketing State
 	state_type b_state = curr_state; // Right Bracketing State
 
 	// Iterate Bisection.  Goes to machine precision for size of t_a and t_b
 	// This means accuracy technically decreases as t_a and t_b become larger
-	//while ((t_a < (t_b+t_a)/2.0) && ((t_b+t_a)/2.0 < t_b))
-	while (boost::numeric::odeint::detail::less_with_sign(t_a, (t_b+t_a)/2.0, dt_interval) && 
-			boost::numeric::odeint::detail::less_with_sign((t_b+t_a)/2.0, t_b, dt_interval))
+	while ((t_a < (t_b+t_a)/2.0) && ((t_b+t_a)/2.0 < t_b))
 	{
 		state_type m_state = a_state; // Initial state is at a
 		double dt_i = t_m - t_a; // Step for this bisection
